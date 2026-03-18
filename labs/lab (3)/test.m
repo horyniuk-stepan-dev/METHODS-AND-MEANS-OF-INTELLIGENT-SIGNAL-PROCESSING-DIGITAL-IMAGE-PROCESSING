@@ -1,44 +1,46 @@
-clear, clc, close all
+clear; clc; close all;
 
-path1 = '/MATLAB Drive/labs/lab1/Cat_November_2010-1a.jpg';
-path2 = '/MATLAB Drive/labs/lab1/imagesbw.jpeg'
-catimg = imread(path1);
-elfantimg = imread(path2);
+% Завантаження оригінального зображення
+I = imread('/MATLAB Drive/labs/lab (3)/imagesbw.jpeg');
+if size(I, 3) == 3
+    I = rgb2gray(I);
+end
+I = im2double(I); % Краще працювати у форматі double для точних обчислень
 
+% Формування оператора перекручення (PSF) - рух камери
+LEN = 21;    % Довжина зсуву
+THETA = 11;  % Кут зсуву
+PSF = fspecial('motion', LEN, THETA);
 
-info1 = imfinfo(path1);
-disp('Інформація про 1 зображення:');
-disp(info1);
-info2 = imfinfo(path2);
-disp('Інформація про 2 зображення:');
-disp(info2);
+% 1. ІДЕАЛЬНІ УМОВИ (БЕЗ ШУМУ)
+% Створення змазаного зображення
+blurred = imfilter(I, PSF, 'conv', 'circular');
 
-imwrite(catimg, '/MATLAB Drive/labs/lab1/saved_cat_image.png');
-imwrite(elfantimg, '/MATLAB Drive/labs/lab1/saved_elefant_image.png');
+% Відновлення (деконволюція)
+% Оскільки шуму немає, SNR (відношення сигнал/шум) дорівнює 0
+wnr1 = deconvwnr(blurred, PSF, 0);
 
-cat_gray = rgb2gray(catimg);
-elfant_gray = rgb2gray(elfantimg);
+figure('Name', 'Відновлення ідеального змазаного зображення');
+subplot(1,3,1); imshow(I); title('Оригінал');
+subplot(1,3,2); imshow(blurred); title('Змазане (motion blur)');
+subplot(1,3,3); imshow(wnr1); title('Відновлене (SNR = 0)');
 
-figure('Name', 'Гістограми та контрастування');
+% 2. РЕАЛЬНІ УМОВИ (З ДОДАВАННЯМ ШУМУ)
+% Додаємо гаусівський шум до змазаного зображення
+noise_var = 0.0001;
+blurred_noisy = imnoise(blurred, 'gaussian', 0, noise_var);
 
-subplot(2,2,1); imhist(cat_gray); title('Гістограма: Кіт');
-subplot(2,2,2); imhist(elfant_gray); title('Гістограма: Слон');
+% Відновлення зашумленого зображення
+% Спершу спробуємо відновити з SNR = 0 (ніби ігноруємо наявність шуму)
+wnr2_bad = deconvwnr(blurred_noisy, PSF, 0);
 
-cat_adj = imadjust(cat_gray);
-elfant_adj = imadjust(elfant_gray);
+% Тепер відновимо з урахуванням оцінки SNR
+% Оцінимо дисперсію самого зображення для розрахунку SNR
+signal_var = var(I(:));
+estimated_snr = signal_var / noise_var;
+wnr3_better = deconvwnr(blurred_noisy, PSF, 1/estimated_snr);
 
-subplot(2,2,3); imshow(cat_adj); title('Кіт: Підвищений контраст');
-subplot(2,2,4); imshow(elfant_adj); title('Слон: Підвищений контраст');
-
-cat_neg = imadjust(catimg, [0 1], [1 0], 1.5);
-elfant_neg_adj = imadjust(elfant_gray, [0 1], [1 0], 1.5);
-
-figure('Name', 'Негативи');
-
-subplot(1,2,1); 
-imshow(cat_neg); 
-title('Негатив кота');
-
-subplot(1,2,2); 
-imshow(elfant_neg_adj); 
-title('Негатив слона');
+figure('Name', 'Відновлення змазаного зображення з шумом');
+subplot(1,3,1); imshow(blurred_noisy); title('Змазане + Шум');
+subplot(1,3,2); imshow(wnr2_bad); title('Відновлене (ігноруючи шум)');
+subplot(1,3,3); imshow(wnr3_better); title('Відновлене (враховуючи SNR)');
