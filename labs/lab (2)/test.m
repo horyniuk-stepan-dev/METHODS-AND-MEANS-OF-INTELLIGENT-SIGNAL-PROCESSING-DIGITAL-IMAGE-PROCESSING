@@ -1,44 +1,38 @@
-clear, clc, close all
+clear; clc; close all;
 
-path1 = '/MATLAB Drive/labs/lab1/Cat_November_2010-1a.jpg';
-path2 = '/MATLAB Drive/labs/lab1/imagesbw.jpeg'
-catimg = imread(path1);
-elfantimg = imread(path2);
+% Завантаження оригінального зображення
+I = imread('/MATLAB Drive/labs/lab (2)/imagesbw.jpeg');
+I = rgb2gray(I);
 
 
-info1 = imfinfo(path1);
-disp('Інформація про 1 зображення:');
-disp(info1);
-info2 = imfinfo(path2);
-disp('Інформація про 2 зображення:');
-disp(info2);
+% Зашумлення зображення різними типами перешкод
+J_gauss = imnoise(I, 'gaussian', 0, 0.01);
+J_salt = imnoise(I, 'salt & pepper', 0.02);
 
-imwrite(catimg, '/MATLAB Drive/labs/lab1/saved_cat_image.png');
-imwrite(elfantimg, '/MATLAB Drive/labs/lab1/saved_elefant_image.png');
+figure('Name', 'Оригінал та зашумлені зображення');
+subplot(1,3,1); imshow(I); title('Оригінал');
+subplot(1,3,2); imshow(J_gauss); title('Гаусівський шум');
+subplot(1,3,3); imshow(J_salt); title('Шум "Сіль та перець"');
 
-cat_gray = rgb2gray(catimg);
-elfant_gray = rgb2gray(elfantimg);
+% Лінійна фільтрація (ФНЧ та ФВЧ)
+h_low = ones(3,3) / 9; 
+h_high = [-1 -1 -1; -1 9 -1; -1 -1 -1]; 
 
-figure('Name', 'Гістограми та контрастування');
+I_low_gauss = imfilter(J_gauss, h_low);
+I_high_orig = imfilter(I, h_high); 
 
-subplot(2,2,1); imhist(cat_gray); title('Гістограма: Кіт');
-subplot(2,2,2); imhist(elfant_gray); title('Гістограма: Слон');
+figure('Name', 'Лінійна фільтрація');
+subplot(1,2,1); imshow(I_low_gauss); title('ФНЧ (згладжування шуму)');
+subplot(1,2,2); imshow(I_high_orig); title('ФВЧ (підкреслення контурів)');
 
-cat_adj = imadjust(cat_gray);
-elfant_adj = imadjust(elfant_gray);
+% Адаптивна вінерівська фільтрація
+K_wiener = wiener2(J_gauss, [5 5]);
 
-subplot(2,2,3); imshow(cat_adj); title('Кіт: Підвищений контраст');
-subplot(2,2,4); imshow(elfant_adj); title('Слон: Підвищений контраст');
+% Медіанна фільтрація
+K_med_salt = medfilt2(J_salt);
+K_med_gauss = medfilt2(J_gauss);
 
-cat_neg = imadjust(catimg, [0 1], [1 0], 1.5);
-elfant_neg_adj = imadjust(elfant_gray, [0 1], [1 0], 1.5);
-
-figure('Name', 'Негативи');
-
-subplot(1,2,1); 
-imshow(cat_neg); 
-title('Негатив кота');
-
-subplot(1,2,2); 
-imshow(elfant_neg_adj); 
-title('Негатив слона');
+figure('Name', 'Адаптивна та Нелінійна фільтрація');
+subplot(1,3,1); imshow(K_wiener); title('Вінерівський (Гаус)');
+subplot(1,3,2); imshow(K_med_salt); title('Медіанний (Сіль/Перець)');
+subplot(1,3,3); imshow(K_med_gauss); title('Медіанний (Гаус)');
