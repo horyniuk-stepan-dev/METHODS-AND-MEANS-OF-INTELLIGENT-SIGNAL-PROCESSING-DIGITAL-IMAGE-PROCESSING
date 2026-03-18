@@ -1,7 +1,7 @@
 clear, clc, close all
 
-path1 = '/MATLAB Drive/labs/lab1/Cat_November_2010-1a.jpg';
-path2 = '/MATLAB Drive/labs/lab1/imagesbw.jpeg'
+path1 = '/MATLAB Drive/labs/lab (1)/Cat_November_2010-1a.jpg';
+path2 = '/MATLAB Drive/labs/lab (1)/imagesbw.jpeg'
 catimg = imread(path1);
 elfantimg = imread(path2);
 
