@@ -1,44 +1,52 @@
-clear, clc, close all
+% Очищення робочого простору
+close all; clear; clc;
 
-path1 = '/MATLAB Drive/labs/lab1/Cat_November_2010-1a.jpg';
-path2 = '/MATLAB Drive/labs/lab1/imagesbw.jpeg'
-catimg = imread(path1);
-elfantimg = imread(path2);
+% Завдання 1 та 2: Завантаження зображень та перетворення у чорно-біле
+F_color = imread('/MATLAB Drive/labs/lab (5)/Cat_November_2010-1a.jpg'); % Завантаження стандартного кольорового зображення
+I_gray = rgb2gray(F_color);
+figure; imshow(I_gray); title('Вихідне чорно-біле зображення');
 
+% Переведення у формат double для уникнення помилок округлення
+I = im2double(I_gray);
 
-info1 = imfinfo(path1);
-disp('Інформація про 1 зображення:');
-disp(info1);
-info2 = imfinfo(path2);
-disp('Інформація про 2 зображення:');
-disp(info2);
+% Завдання 3: Поблочне дискретне косинусне перетворення (ДКП)
+N = 8; % Розмір блоку 8x8
+T = dctmtx(N);
+dct_func = @(block_struct) T * block_struct.data * T';
+B = blockproc(I, [N N], dct_func, 'PadPartialBlocks', true);
 
-imwrite(catimg, '/MATLAB Drive/labs/lab1/saved_cat_image.png');
-imwrite(elfantimg, '/MATLAB Drive/labs/lab1/saved_elefant_image.png');
+% Завдання 4: Відображення результату поблочного ДКП
+figure; imshow(log(abs(B)), []); title('Поблочний ДКП-спектр (логарифмічний масштаб)');
+colormap(gca, jet); colorbar;
 
-cat_gray = rgb2gray(catimg);
-elfant_gray = rgb2gray(elfantimg);
+% Завдання 5: Відновлення зображення за його ДКП-спектром
+invdct_func = @(block_struct) T' * block_struct.data * T;
+I2 = blockproc(B, [N N], invdct_func, 'PadPartialBlocks', true);
+figure; imshow(I2); title('Відновлене зображення (без втрат)');
 
-figure('Name', 'Гістограми та контрастування');
+% Завдання 6: Рівномірне квантування результатів ДКП
+quant_step1 = 0.05; 
+B_quant1 = quant_step1 * round(B / quant_step1);
+I_quant1 = blockproc(B_quant1, [N N], invdct_func);
+figure; imshow(I_quant1); title('Відновлене після квантування (крок 0.05)');
 
-subplot(2,2,1); imhist(cat_gray); title('Гістограма: Кіт');
-subplot(2,2,2); imhist(elfant_gray); title('Гістограма: Слон');
+quant_step2 = 0.2; 
+B_quant2 = quant_step2 * round(B / quant_step2);
+I_quant2 = blockproc(B_quant2, [N N], invdct_func);
+figure; imshow(I_quant2); title('Відновлене після квантування (крок 0.2)');
 
-cat_adj = imadjust(cat_gray);
-elfant_adj = imadjust(elfant_gray);
+% Завдання 7: Квантування коефіцієнтів ДКП за допомогою спеціальної матриці
+mask = [1 1 1 1 0 0 0 0;
+        1 1 1 0 0 0 0 0;
+        1 1 0 0 0 0 0 0;
+        1 0 0 0 0 0 0 0;
+        0 0 0 0 0 0 0 0;
+        0 0 0 0 0 0 0 0;
+        0 0 0 0 0 0 0 0;
+        0 0 0 0 0 0 0 0];
 
-subplot(2,2,3); imshow(cat_adj); title('Кіт: Підвищений контраст');
-subplot(2,2,4); imshow(elfant_adj); title('Слон: Підвищений контраст');
+B_mask = blockproc(B, [N N], @(block_struct) mask .* block_struct.data, 'PadPartialBlocks', true);
 
-cat_neg = imadjust(catimg, [0 1], [1 0], 1.5);
-elfant_neg_adj = imadjust(elfant_gray, [0 1], [1 0], 1.5);
-
-figure('Name', 'Негативи');
-
-subplot(1,2,1); 
-imshow(cat_neg); 
-title('Негатив кота');
-
-subplot(1,2,2); 
-imshow(elfant_neg_adj); 
-title('Негатив слона');
+% Завдання 8: Відновлення зображення за маскованим ДКП-спектром
+I_mask_restored = blockproc(B_mask, [N N], invdct_func);
+figure; imshow(I_mask_restored); title('Відновлене після застосування маски');
