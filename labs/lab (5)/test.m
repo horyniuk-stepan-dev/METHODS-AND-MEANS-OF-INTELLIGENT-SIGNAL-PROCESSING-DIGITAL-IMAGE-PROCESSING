@@ -1,44 +1,53 @@
-clear, clc, close all
+% Очищення робочого простору та закриття всіх вікон
+close all; clear; clc;
 
-path1 = '/MATLAB Drive/labs/lab1/Cat_November_2010-1a.jpg';
-path2 = '/MATLAB Drive/labs/lab1/imagesbw.jpeg'
-catimg = imread(path1);
-elfantimg = imread(path2);
+% Завдання 1: Завантаження зображень
+F = imread('/MATLAB Drive/labs/lab (5)/Cat_November_2010-1a.jpg'); % Використовуємо стандартне зображення MATLAB
+figure; imshow(F); title('Оригінальне кольорове зображення');
 
+% Завдання 2: Перетворення в чорно-біле
+I = rgb2gray(F);
+figure; imshow(I); title('Чорно-біле зображення (градації сірого)');
 
-info1 = imfinfo(path1);
-disp('Інформація про 1 зображення:');
-disp(info1);
-info2 = imfinfo(path2);
-disp('Інформація про 2 зображення:');
-disp(info2);
+% Завдання 3: Дискретне косинусне перетворення (ДКП)
+J = dct2(I);
+figure; imshow(log(abs(J)), []); title('ДКП-спектр (логарифмічний масштаб)');
+colormap(gca, jet); colorbar;
 
-imwrite(catimg, '/MATLAB Drive/labs/lab1/saved_cat_image.png');
-imwrite(elfantimg, '/MATLAB Drive/labs/lab1/saved_elefant_image.png');
+% Завдання 4: Відновлення зображення за оригінальним ДКП-спектром
+K_restored = idct2(J);
+figure; imshow(K_restored, [0 255]); title('Відновлене зображення (без квантування)');
 
-cat_gray = rgb2gray(catimg);
-elfant_gray = rgb2gray(elfantimg);
+% Завдання 5, 6, 7: Квантування результатів ДКП для різних значень кроку N
+N_values = [10, 30, 50]; % Задаємо різні значення кроку квантування
 
-figure('Name', 'Гістограми та контрастування');
+for i = 1:length(N_values)
+    N = N_values(i);
+    
+    % Завдання 5: Квантування коефіцієнтів ДКП
+    % У методичці є одруківка N*round(J*N), правильно ділити на N:
+    J_quant = N * round(J / N);
+    
+    % Завдання 6: Відображення квантованого спектру
+    figure; imshow(log(abs(J_quant)), []); 
+    title(['Квантований ДКП-спектр, N = ', num2str(N)]);
+    
+    % Завдання 7: Відновлення зображення за квантованим спектром
+    K_quant_restored = idct2(J_quant);
+    figure; imshow(K_quant_restored, [0 255]); 
+    title(['Відновлене зображення після квантування ДКП, N = ', num2str(N)]);
+end
 
-subplot(2,2,1); imhist(cat_gray); title('Гістограма: Кіт');
-subplot(2,2,2); imhist(elfant_gray); title('Гістограма: Слон');
+% Завдання 9: Квантування вихідного зображення (у просторовій області)
+n_values = [10, 30]; % Крок квантування для самих пікселів
+I_double = double(I); % Переводимо у double для уникнення помилок округлення типу uint8
 
-cat_adj = imadjust(cat_gray);
-elfant_adj = imadjust(elfant_gray);
-
-subplot(2,2,3); imshow(cat_adj); title('Кіт: Підвищений контраст');
-subplot(2,2,4); imshow(elfant_adj); title('Слон: Підвищений контраст');
-
-cat_neg = imadjust(catimg, [0 1], [1 0], 1.5);
-elfant_neg_adj = imadjust(elfant_gray, [0 1], [1 0], 1.5);
-
-figure('Name', 'Негативи');
-
-subplot(1,2,1); 
-imshow(cat_neg); 
-title('Негатив кота');
-
-subplot(1,2,2); 
-imshow(elfant_neg_adj); 
-title('Негатив слона');
+for i = 1:length(n_values)
+    n = n_values(i);
+    
+    % Квантуємо безпосередньо пікселі зображення
+    I_quant = n * round(I_double / n);
+    
+    figure; imshow(uint8(I_quant)); 
+    title(['Квантоване вихідне зображення (без ДКП), n = ', num2str(n)]);
+end
